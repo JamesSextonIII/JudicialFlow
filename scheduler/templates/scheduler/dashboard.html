@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JudicialFlow Dashboard</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #f4f4f9; }
+        h1 { color: #333; }
+        .controls { margin-bottom: 20px; }
+        button { padding: 10px 20px; background-color: #007bff; color: white; border: none; cursor: pointer; border-radius: 5px;}
+        button:hover { background-color: #0056b3; }
+
+        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #007bff; color: white; }
+        tr:hover { background-color: #f1f1f1; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
+        .badge-locked { background-color: #dc3545; color: white; }
+        .badge-auto { background-color: #28a745; color: white; }
+    </style>
+</head>
+<body>
+
+    <h1>📅 JudicialFlow Schedule (Feb 2026)</h1>
+
+    <div class="controls">
+        <button onclick="loadSchedule()">🔄 Refresh Data</button>
+        <button onclick="runGenerator()" style="background-color: #28a745; margin-left: 10px;">⚙️ Run Auto-Scheduler</button>
+    </div>
+
+    <table id="schedule-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Judge</th>
+                <th>Assigned Agent</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            </tbody>
+    </table>
+
+    <script>
+        async function loadSchedule() {
+            const tableBody = document.querySelector('#schedule-table tbody');
+            tableBody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+
+            try {
+                // 1. Fetch data from your API
+                const response = await fetch('/api/schedule/?year=2026&month=2');
+                const data = await response.json();
+
+                // 2. Clear table
+                tableBody.innerHTML = '';
+
+                // 3. Loop through data and create rows
+                data.forEach(item => {
+                    const row = `
+                        <tr>
+                            <td>${item.date}</td>
+                            <td>${item.start_time}</td>
+                            <td><strong>${item.judge.last_name}</strong> (${item.judge.room_number})</td>
+                            <td>${item.agent.first_name} ${item.agent.last_name}</td>
+                            <td>
+                                <span class="badge ${item.is_locked ? 'badge-locked' : 'badge-auto'}">
+                                    ${item.is_locked ? 'LOCKED' : 'AUTO'}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                tableBody.innerHTML = '<tr><td colspan="5" style="color:red">Error loading data. Is the server running?</td></tr>';
+            }
+        }
+
+        async function runGenerator() {
+            if(!confirm("Are you sure? This will overwrite unlocked slots.")) return;
+
+            try {
+                const response = await fetch('/api/generate/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ year: 2026, month: 2 })
+                });
+                const result = await response.json();
+                alert(result.message);
+                loadSchedule(); // Refresh table after generating
+            } catch (error) {
+                alert("Error running generator");
+            }
+        }
+
+        // Load data automatically when page opens
+        loadSchedule();
+    </script>
+
+</body>
+</html>
