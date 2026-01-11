@@ -1,101 +1,75 @@
-Project Log: JudicialFlow - Automated Court Staffing Engine
+# Project Log: JudicialFlow - Automated Court Scheduling System
 
-![Python](https://img.shields.io/badge/Python-3.11-blue?style=flat&logo=python)
-![Django](https://img.shields.io/badge/Django-5.0-green?style=flat&logo=django)
-![React](https://img.shields.io/badge/React-18-blue?style=flat&logo=react)
-![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-336791?style=flat&logo=postgresql)
-![Status](https://img.shields.io/badge/Status-In_Development-orange)
+## 1. Project Objective
+I initiated this project to build a full-stack automated scheduling engine that solves the logistical "knapsack problem" of court resource allocation. My primary goal was to demonstrate the ability to engineer a complex constraint-satisfaction algorithm in Python, architect a scalable Django backend, and deliver a user-friendly frontend for non-technical stakeholders.
 
-1. Project Objective
-I initiated this project to solve a complex operational bottleneck: the monthly scheduling of court staff. Currently a manual, high-friction process, this task requires balancing "Hard Constraints" (legal mandates, report days, holidays) against "Soft Constraints" (fairness, rotation, burnout prevention).
+## 2. Architecture & Workflow Decisions
+I deliberately moved away from a simple script-based approach to a robust Model-View-Controller (MVC) architecture to ensure scalability and data integrity.
 
-My primary goal is to build a full-stack web application that transitions this process from manual entry to algorithmic generation, while simultaneously architecting a database capable of providing long-term workforce analytics.
+* **Schema Separation:** I isolated the "Business Entities" from "System Users."
+    * `Supervisor`: Handles authentication and system access.
+    * `Agent`: Represents the staff workforce. This separation allows the system to schedule staff members who do not have (or need) login credentials, mirroring real-world enterprise security requirements.
+* **Data Normalization:** I decoupled the schedule "Template" from the "Instance."
+    * `RecurringCourtSlot`: Defines the static pattern (e.g., Judge Garcia sits on Mondays).
+    * `MonthlyAssignment`: Represents the generated record. This allows for date-specific modifications (e.g., sick leave) without corrupting the master schedule.
 
-2. Architectural Decisions: The Move to Full-Stack
-Unlike simple data scripts, this application requires real-time user interaction and complex state management. I deliberately chose a decoupled Client-Server Architecture:
+## 3. Data Privacy & Security Implementation
+**Challenge:** Court scheduling data implies sensitive operational security details regarding judge locations and staff movements.
 
-Backend (Python/Django & DRF): I selected Python to leverage its robust ecosystem for both web standards and mathematical optimization. Django REST Framework (DRF) serves as the interface layer, serializing complex schedule data into JSON for the frontend.
+**Solution:**
+* **Environment Isolation:** I configured `.gitignore` to strictly exclude local database files (`db.sqlite3`) and environment configuration files.
+* **Role-Based Access:** By leveraging Django's built-in authentication for the `Supervisor` model, I ensured that the scheduling engine is exposed only to authenticated personnel, while the `Agent` data remains protected within the internal logic.
 
-Database (PostgreSQL): I moved away from lightweight SQLite to PostgreSQL to handle concurrent user writes and to utilize advanced date/time querying features essential for schedule conflict detection.
+## 4. Engineering "Hard" & "Soft" Constraints
+To prove my backend engineering capabilities, I did not want a simple "fill-the-slots" tool. I engineered specific conflicting constraints to simulate the chaos of real-world operations:
 
-Frontend (React.js): I chose React to build a highly interactive Single Page Application (SPA). This allows for a dynamic "Calendar View" where the administrator can drag-and-drop shifts without reloading the page, providing a seamless user experience that matches commercial SaaS tools.
+* **Hard Constraints (Blockers):** I implemented strict logic to handle `TimeOffRequest` (Vacations) and `RecurringReportDay` (Unavailable days). The system must mathematically reject any attempt to schedule an agent during these blocks.
+* **Soft Constraints (Preferences):** I introduced a "Specialist" relationship (`SpecialtyAssignment`) where specific agents must be prioritized for specific judges, but only if they are not otherwise blocked.
+* **Capacity Limits:** The system enforces a one-to-one relationship between Agents and Slots per time block to prevent double-booking.
 
-3. Database Schema & Data Modeling
-The primary engineering challenge identified was that while Agents have static availability (8:00–5:00 M-F), the demand (Court Sessions) follows complex, recurring patterns unique to each Judge.
+## 5. Pipeline Execution & Logic Engine
+To bridge the gap between static database records and a dynamic schedule, I implemented a custom object-oriented engine in `scheduler/engine.py`.
 
-I normalized the database into three conceptual modules:
+* **The "Waterfall" Algorithm:** I rejected a brute-force approach in favor of a deterministic multi-pass algorithm:
+    * **Pass 0 (The Filter):** Pre-calculates a "Blocker Matrix" for the entire month, filtering out unavailability before assignment begins.
+    * **Pass 1 (The VIP Lane):** Assigns Specialists to their preferred judges, strictly adhering to the Blocker Matrix.
+    * **Pass 2 (The General Pool):** Fills remaining gaps using available agents, running real-time conflict checks against the live schedule.
+* **Efficiency:** This approach reduces computational complexity from exponential (checking every agent against every slot) to linear passes.
 
-A. The People (Static Data)
-Supervisor (User Model): Handles authentication and Role-Based Access Control (RBAC). Supervisors have Write access; Agents have Read-Only access to view their schedules.
+## 6. Phase 2: API Integration & JSON Serialization
+With the logic engine established, I shifted to exposing this data for the frontend.
 
-Agent:
+* **RESTful Architecture:** I integrated the Django REST Framework (DRF) to serialize complex relational data (Agents, Judges, Assignments) into clean JSON endpoints.
+* **Endpoint Design:** I engineered specific endpoints (`/api/schedule/` and `/api/generate/`) to decouple the frontend from the backend logic. This allows the scheduling engine to run asynchronously without freezing the user interface.
 
-Report Day Constraint: A "Hard Constraint" (0-4, Mon-Fri) where the agent is strictly forbidden from covering court.
+## 7. Final Validation & Human-in-the-Loop
+While the algorithm is efficient, operational reality often requires human intervention. I needed a way to persist manual overrides against the automated engine.
 
-Specialization Logic: Agents are not just "Specialized" or "General"; they are mapped to specific Judges via a relationship table (see below).
+* **The Locking Mechanism:** I engineered an `is_locked` boolean flag on the `MonthlyAssignment` model.
+* **Logic Adaptation:** I updated the `scheduler/engine.py` logic to respect this flag. Before clearing a month to re-generate a schedule, the engine checks for "Locked" slots and preserves them. This allows a hybrid workflow where humans handle exceptions, and the AI handles the bulk volume.
 
-Judge:
+## 8. Phase 3: Visualization & Dashboarding
+**Status:** Complete
+**Tooling:** HTML5, CSS3, Vanilla JavaScript (Fetch API)
 
-Location Ownership: Since Judges "own" their courtrooms, location data is denormalized into the Judge entity to reduce complexity.
+To finalize the pipeline, I built an interactive dashboard to present the schedule to management.
 
-B. The Logic Entities (Pattern Generation)
-RecurringCourtSlot: Defines the standard monthly requirements (e.g., "Judge Smith sits every Tuesday at 9:00 AM"). This allows the scheduler to generate a "Skeleton Schedule" automatically without manual input every month.
+* **Asynchronous Data Fetching:** I utilized JavaScript `async/await` patterns to fetch JSON data from the API, ensuring a responsive UI that loads large datasets without page reloads.
+* **Visual Status Indicators:** I implemented dynamic CSS styling to visually distinguish between "AUTO" generated assignments and "LOCKED" manual overrides, providing immediate visual feedback on the schedule's integrity.
+* **Control Interface:** The dashboard includes direct controls to trigger the Python Logic Engine via API calls, giving the user "One-Click" scheduling power.
 
-SpecialtyAssignment: A relational mapping table that handles the complex specialization rules:
+### Final Dashboard Artifact
+*(Placeholder for Dashboard Screenshot)*
 
-Type 1 (Hybrid): Agent covers a specific Judge's court but remains in the general rotation pool for other times.
+## 9. Tools & Technologies Used
+* **Languages:** Python 3.13, JavaScript (ES6+), SQL.
+* **Frameworks:** Django 6.0, Django REST Framework.
+* **Database:** SQLite (Dev), PostgreSQL (Prod Ready).
+* **Frontend:** HTML5, CSS3.
 
-Type 2 (Exclusive): Agent covers a specific Judge's court and is removed from the general rotation pool entirely.
-
-C. The Operations (Transactional Data)
-MonthlyAssignment: The final, generated shift. It links an Agent to a Judge for a specific Date and Time.
-
-TimeOffRequest: Tracks non-routine unavailability (Vacation, Sick, Training).
-
-4. The "Waterfall" Scheduling Algorithm
-The core innovation of this application is the scheduling engine. Instead of a brute-force approach, the algorithm runs in three prioritized passes:
-
-Pass 0: The "Blocker" Layer (Hard Constraints)
-Before assigning anyone, the system identifies where agents CANNOT be.
-
-Fetch Constraints: Retrieve all TimeOffRequests and ReportDays.
-
-Result: A matrix of valid/invalid slots for every agent.
-
-Pass 1: The "Specialist" Layer (Priority Assignments)
-The system locks in the experts first.
-
-Identify Specialized Slots: Find slots belonging to Judges with linked SpecialtyAssignments.
-
-Assign & Lock:
-
-If Type 2 (Exclusive): The agent is assigned to the judge and marked UNAVAILABLE for the rest of the month's general pool.
-
-If Type 1 (Hybrid): The agent is assigned to the judge but remains available for other slots on different days.
-
-Pass 2: The "General Rotation" Layer (Weighted Optimization)
-The system fills the remaining holes using a fairness score.
-
-Scoring Loop: For each empty slot, calculate a "Suitability Score" for every available agent:
-
-Base Score: 100
-
-Fairness Penalty: -10 points for every shift already assigned this month (distributes workload).
-
-Variety Penalty: -20 points if assigned to this specific Judge in the last 30 days (forces rotation).
-
-Consecutive Penalty: -50 points if the agent is already working the morning shift (prevents burnout).
-
-Selection: The Agent with the highest score wins the slot.
-
-5. Data Privacy & "Unofficial" Tooling Strategy
-Challenge: As this tool is designed for actual workplace use, it will eventually process real employee names, which cannot be exposed in a public portfolio.
-
-Solution:
-
-Environment Configuration: All sensitive configuration (Secret Keys, DB Passwords) is loaded via .env files, strictly excluded via .gitignore.
-
-Mock Seeding Protocol: I created a management command script (seed_mock_data.py) that populates the database with fictitious Agents and Judges. This allows recruiters to clone and run the full application logic without accessing production data.
-
-6. Future Roadmap: Analytics
-Beyond scheduling, the system is designed to answer: "Are our assignments fair?" The normalized schema allows for SQL Window Functions (e.g., PARTITION BY agent_id) to calculate rolling averages of workload distribution, which will populate an "Admin Dashboard" in future versions.
+## 10. Project Conclusion
+This portfolio project successfully demonstrates a full-stack engineering capability:
+* **Architected** a normalized relational database schema to handle complex workforce relationships.
+* **Engineered** a multi-pass Python algorithm to solve constraint-satisfaction problems.
+* **Integrated** a RESTful API to serve data to a reactive frontend.
+* **Delivered** a production-ready dashboard that balances automation with human control.
