@@ -12,4 +12,6 @@ urlpatterns = [
     path('api/schedule/', views.get_schedule),
     path('api/generate/', views.generate_schedule),
     path('api/report-days/', views.get_report_days),
+    path('api/demo/clear/', views.demo_clear_data),
+    path('api/demo/load/', views.demo_load_data),
 ]

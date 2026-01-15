@@ -65,3 +65,25 @@ def get_report_days(request):
             roster[day_name].append(agent.last_name)
 
     return JsonResponse(roster)
+
+from django.core.management import call_command
+from .models import Agent, Judge, MonthlyAssignment, RecurringCourtSlot
+
+@api_view(['POST'])
+def demo_clear_data(request):
+    """Wipes all data to show a blank slate."""
+    MonthlyAssignment.objects.all().delete()
+    Agent.objects.all().delete()
+    Judge.objects.all().delete()
+    RecurringCourtSlot.objects.all().delete()
+    return Response({"message": "Database wiped successfully! Ready for manual entry demo."})
+
+@api_view(['POST'])
+def demo_load_data(request):
+    """Loads the 'Golden Record' fixture."""
+    try:
+        # We will create this 'demo_roster.json' file in a moment
+        call_command('loaddata', 'demo_roster.json')
+        return Response({"message": "Perfect Data loaded successfully!"})
+    except Exception as e:
+        return Response({"message": f"Error loading data: {str(e)}"}, status=500)

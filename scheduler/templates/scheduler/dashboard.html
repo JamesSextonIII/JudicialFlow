@@ -5,111 +5,46 @@
     <title>Agent Court Schedule</title>
     <style>
         /* --- Document Style Reset --- */
-        body {
-            font-family: "Calibri", "Arial", sans-serif;
-            padding: 20px;
-            background-color: #f4f4f9;
-        }
-
-        .page-container {
-            background: white;
-            width: 1000px;
-            margin: 0 auto;
-            padding: 40px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
+        body { font-family: "Calibri", "Arial", sans-serif; padding: 20px; background-color: #f4f4f9; }
+        .page-container { background: white; width: 1000px; margin: 0 auto; padding: 40px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
 
         /* --- Header --- */
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid black;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-        }
+        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px; }
         h1 { font-size: 24px; text-transform: uppercase; margin: 0; }
-        .controls button {
-            padding: 8px 16px;
-            cursor: pointer;
-            font-size: 14px;
-        }
+        .controls button { padding: 8px 16px; cursor: pointer; font-size: 14px; }
 
         /* --- Calendar Grid --- */
-        .calendar-header {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            text-align: center;
-            font-weight: bold;
-            background-color: #ddd;
-            border: 1px solid black;
-            border-bottom: none;
-        }
+        .calendar-header { display: grid; grid-template-columns: repeat(5, 1fr); text-align: center; font-weight: bold; background-color: #ddd; border: 1px solid black; border-bottom: none; }
         .day-name { padding: 10px; border-right: 1px solid black; }
         .day-name:last-child { border-right: none; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(5, 1fr); border: 1px solid black; border-top: none; }
 
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            border: 1px solid black;
-            border-top: none;
-        }
-
-        .calendar-day {
-            border-right: 1px solid black;
-            border-bottom: 1px solid black;
-            min-height: 150px;
-            padding: 5px;
-            font-size: 13px; /* Slightly smaller to fit times */
-        }
-
+        .calendar-day { border-right: 1px solid black; border-bottom: 1px solid black; min-height: 150px; padding: 5px; font-size: 13px; }
         .calendar-day:nth-child(5n) { border-right: none; }
+        .date-number { font-weight: bold; margin-bottom: 5px; display: block; }
 
-        .date-number {
-            font-weight: bold;
-            margin-bottom: 5px;
-            display: block;
-        }
+        .assignment { margin-bottom: 4px; line-height: 1.2; }
+        .assignment strong { font-weight: bold; }
+        .lock-icon { font-size: 0.9em; margin-right: 2px; }
 
-        .assignment {
-            margin-bottom: 4px;
-            line-height: 1.2;
-        }
-
-        .assignment strong {
-            font-weight: bold;
-        }
-
-        /* --- Footer / Rules Section --- */
-        .footer-rules {
-            margin-top: 30px;
-            font-size: 12px;
-            border-top: 2px solid black;
-            padding-top: 10px;
-        }
+        /* --- Footer --- */
+        .footer-rules { margin-top: 30px; font-size: 12px; border-top: 2px solid black; padding-top: 10px; }
         .footer-rules ul { padding-left: 20px; }
         .footer-rules li { margin-bottom: 5px; }
+        .contact-days { margin-top: 20px; border: 1px solid black; padding: 10px; font-size: 12px; }
+        .contact-grid { display: grid; grid-template-columns: 100px 1fr; gap: 5px; }
+        .contact-row { display: contents; }
 
-        .contact-days {
-            margin-top: 20px;
-            border: 1px solid black;
-            padding: 10px;
-            font-size: 12px;
-        }
-        .contact-grid {
-            display: grid;
-            grid-template-columns: 100px 1fr; /* Fixed label width */
-            gap: 5px;
-        }
-        .contact-row {
-            display: contents; /* Allows children to participate in grid */
-        }
+        /* --- Demo Controls (Hidden by default) --- */
+        .demo-panel { margin-top: 50px; padding: 20px; background: #ffeebb; border: 1px solid #eebb55; border-radius: 5px; }
+        .demo-btn { background: #d9534f; color: white; border: none; padding: 10px; cursor: pointer; margin-right: 10px; }
+        .demo-btn.load { background: #5bc0de; }
+        details { cursor: pointer; }
 
-        /* Print-friendly styles */
         @media print {
             body { background: white; padding: 0; }
             .page-container { box-shadow: none; width: 100%; padding: 0; }
-            .controls { display: none; }
+            .controls, .demo-panel { display: none; }
         }
     </style>
 </head>
@@ -132,16 +67,15 @@
         <div class="day-name">FRIDAY</div>
     </div>
 
-    <div id="calendar-grid" class="calendar-grid">
-        </div>
+    <div id="calendar-grid" class="calendar-grid"></div>
 
     <div class="footer-rules">
         <strong>Saginaw Co. Probation Court Rules:</strong>
         <ul>
-            <li>If a court matter occurs on a friday, the last agent assigned to the case will cover the matter.</li>
-            <li>If an agent has a probation violation hearing scheduled, they are expected to cover the hearing. </li>
-            <li>If an agent is unable to cover a court (annual leave, sick leave), they are responsible to find a replacement.</li>
-            <li>If no replacement is found, a supervisor shall be notified. A supervisor will select an agent to cover.</li>
+            <li>If a court matter occurs on a Friday, the last agent assigned to the case will cover the matter.</li>
+            <li>If an agent has a Probation Violation Hearing scheduled, they are expected to cover the Court for that day.</li>
+            <li>If an Agent is unable to cover a Court (annual leave, sick leave), they are responsible to find a replacement.</li>
+            <li>If no replacement is found, a supervisor will select an agent.</li>
         </ul>
     </div>
 
@@ -151,42 +85,45 @@
             <div>Loading Roster...</div>
         </div>
     </div>
+
+    <div class="demo-panel">
+        <details>
+            <summary><strong>⚠️ Demo Controls (For Supervisor Presentation)</strong></summary>
+            <p>Use these buttons to reset the state during your presentation.</p>
+            <button class="demo-btn" onclick="runDemoAction('clear')">1. Wipe Data (Blank)</button>
+            <button class="demo-btn load" onclick="runDemoAction('load')">2. Load "Perfect" Data</button>
+        </details>
+    </div>
 </div>
 
 <script>
     const YEAR = 2026;
-    const MONTH = 2; // February
+    const MONTH = 2;
 
     async function loadSchedule() {
-        // 1. Format Title: "February 2026"
         const dateObj = new Date(YEAR, MONTH - 1, 1);
         const monthName = dateObj.toLocaleString('default', { month: 'long', year: 'numeric' });
         document.getElementById('month-title').innerText = `AGENT COURT SCHEDULE - ${monthName}`;
 
         const grid = document.getElementById('calendar-grid');
-        grid.innerHTML = '<div style="grid-column: span 5; padding: 20px;">Loading Schedule...</div>';
+        grid.innerHTML = '<div style="grid-column: span 5; padding: 20px;">Loading...</div>';
 
         try {
             const response = await fetch(`/api/schedule/?year=${YEAR}&month=${MONTH}`);
             const assignments = await response.json();
-
             grid.innerHTML = '';
 
-            // Helper: Group by Date
             const dataByDate = {};
             assignments.forEach(a => {
                 if (!dataByDate[a.date]) dataByDate[a.date] = [];
                 dataByDate[a.date].push(a);
             });
 
-            // Loop Days (1 to End of Month)
             const daysInMonth = new Date(YEAR, MONTH, 0).getDate();
 
             for (let d = 1; d <= daysInMonth; d++) {
                 const currentDayObj = new Date(YEAR, MONTH - 1, d);
                 const dayOfWeek = currentDayObj.getDay();
-
-                // Skip Sat(6) and Sun(0)
                 if (dayOfWeek === 0 || dayOfWeek === 6) continue;
 
                 const dateStr = `${YEAR}-${String(MONTH).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -194,18 +131,18 @@
                 let contentHtml = '';
                 if (dataByDate[dateStr]) {
                     dataByDate[dateStr].forEach(item => {
-                        // Clean up time: "09:00:00" -> "9:00"
                         let timeStr = item.start_time;
                         try {
                             const [h, m] = item.start_time.split(':');
-                            const hour = parseInt(h, 10); // Removes leading zero
-                            timeStr = `${hour}:${m}`;
+                            timeStr = `${parseInt(h, 10)}:${m}`;
                         } catch(e) {}
 
-                        // New Format: Time Judge: Agent
+                        // LOCK ICON LOGIC ADDED HERE
+                        const lockIcon = item.is_locked ? '<span class="lock-icon" title="Locked">🔒</span>' : '';
+
                         contentHtml += `
                             <div class="assignment">
-                                <strong>${timeStr} ${item.judge.last_name}:</strong> ${item.agent.last_name}
+                                ${lockIcon} <strong>${timeStr} ${item.judge.last_name}:</strong> ${item.agent.last_name}
                             </div>
                         `;
                     });
@@ -215,52 +152,40 @@
 
                 const cell = document.createElement('div');
                 cell.className = 'calendar-day';
-                cell.innerHTML = `
-                    <span class="date-number">${d}</span>
-                    ${contentHtml}
-                `;
+                cell.innerHTML = `<span class="date-number">${d}</span>${contentHtml}`;
                 grid.appendChild(cell);
             }
-
-        } catch (error) {
-            console.error(error);
-            grid.innerHTML = '<div style="color:red; grid-column: span 5;">Error loading schedule.</div>';
-        }
+        } catch (error) { grid.innerHTML = 'Error loading.'; }
     }
 
     async function loadFooter() {
         const footer = document.getElementById('contact-footer');
         try {
-            const response = await fetch('/api/report-days/');
-            const roster = await response.json();
-
-            footer.innerHTML = ''; // Clear loading text
-
-            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-
-            days.forEach(day => {
-                const agents = roster[day] && roster[day].length > 0
-                    ? roster[day].join(', ')
-                    : '(None Assigned)';
-
-                footer.innerHTML += `
-                    <div class="contact-row">
-                        <div style="font-weight:bold;">${day}:</div>
-                        <div>${agents}</div>
-                    </div>
-                `;
+            const res = await fetch('/api/report-days/');
+            const roster = await res.json();
+            footer.innerHTML = '';
+            ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(day => {
+                const agents = roster[day] && roster[day].length > 0 ? roster[day].join(', ') : '(None)';
+                footer.innerHTML += `<div class="contact-row"><div style="font-weight:bold;">${day}:</div><div>${agents}</div></div>`;
             });
-
-        } catch (error) {
-            console.error(error);
-            footer.innerHTML = '<div>Error loading agent roster.</div>';
-        }
+        } catch (e) { footer.innerHTML = 'Error.'; }
     }
 
-    // Run on Page Load
+    async function runDemoAction(action) {
+        if(!confirm(`Are you sure you want to ${action.toUpperCase()} the database?`)) return;
+        const url = action === 'clear' ? '/api/demo/clear/' : '/api/demo/load/';
+
+        try {
+            const res = await fetch(url, { method: 'POST' });
+            const data = await res.json();
+            alert(data.message);
+            loadSchedule();
+            loadFooter();
+        } catch(e) { alert("Error running demo action"); }
+    }
+
     loadSchedule();
     loadFooter();
 </script>
-
 </body>
 </html>
