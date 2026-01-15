@@ -2,102 +2,252 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>JudicialFlow Dashboard</title>
+    <title>Agent Court Schedule</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; background-color: #f4f4f9; }
-        h1 { color: #333; }
-        .controls { margin-bottom: 20px; }
-        button { padding: 10px 20px; background-color: #007bff; color: white; border: none; cursor: pointer; border-radius: 5px;}
-        button:hover { background-color: #0056b3; }
+        /* --- Document Style Reset --- */
+        body {
+            font-family: "Calibri", "Arial", sans-serif;
+            padding: 20px;
+            background-color: #f4f4f9;
+        }
 
-        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background-color: #007bff; color: white; }
-        tr:hover { background-color: #f1f1f1; }
-        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
-        .badge-locked { background-color: #dc3545; color: white; }
-        .badge-auto { background-color: #28a745; color: white; }
+        .page-container {
+            background: white;
+            width: 1000px; /* Fixed width to mimic paper */
+            margin: 0 auto;
+            padding: 40px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        /* --- Header --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid black;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        h1 { font-size: 24px; text-transform: uppercase; margin: 0; }
+        .controls button {
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        /* --- Calendar Grid --- */
+        .calendar-header {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr); /* 5 Columns for Mon-Fri */
+            text-align: center;
+            font-weight: bold;
+            background-color: #ddd;
+            border: 1px solid black;
+            border-bottom: none;
+        }
+        .day-name { padding: 10px; border-right: 1px solid black; }
+        .day-name:last-child { border-right: none; }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr); /* 5 Columns */
+            border: 1px solid black;
+            border-top: none;
+        }
+
+        .calendar-day {
+            border-right: 1px solid black;
+            border-bottom: 1px solid black;
+            min-height: 150px; /* Tall boxes like the doc */
+            padding: 5px;
+            font-size: 14px;
+            position: relative;
+        }
+
+        /* Remove right border for Friday column */
+        .calendar-day:nth-child(5n) { border-right: none; }
+
+        .date-number {
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .assignment {
+            margin-bottom: 4px;
+            line-height: 1.2;
+        }
+
+        .assignment strong {
+            font-weight: bold;
+        }
+
+        .empty-cell { background-color: #f9f9f9; }
+
+        /* --- Footer / Rules Section --- */
+        .footer-rules {
+            margin-top: 30px;
+            font-size: 12px;
+            border-top: 2px solid black;
+            padding-top: 10px;
+        }
+        .footer-rules ul { padding-left: 20px; }
+        .footer-rules li { margin-bottom: 5px; }
+
+        .contact-days {
+            margin-top: 20px;
+            border: 1px solid black;
+            padding: 10px;
+            font-size: 12px;
+        }
+        .contact-grid {
+            display: grid;
+            grid-template-columns: 1fr 4fr;
+            gap: 10px;
+        }
+
+        /* Print-friendly styles */
+        @media print {
+            body { background: white; padding: 0; }
+            .page-container { box-shadow: none; width: 100%; padding: 0; }
+            .controls { display: none; }
+        }
     </style>
 </head>
 <body>
 
-    <h1>📅 JudicialFlow Schedule (Feb 2026)</h1>
+<div class="page-container">
+    <header>
+        <h1 id="month-title">AGENT COURT SCHEDULE</h1>
+        <div class="controls">
+            <button onclick="loadSchedule()">🔄 Refresh</button>
+            <button onclick="window.print()">🖨️ Print</button>
+        </div>
+    </header>
 
-    <div class="controls">
-        <button onclick="loadSchedule()">🔄 Refresh Data</button>
-        <button onclick="runGenerator()" style="background-color: #28a745; margin-left: 10px;">⚙️ Run Auto-Scheduler</button>
+    <div class="calendar-header">
+        <div class="day-name">MONDAY</div>
+        <div class="day-name">TUESDAY</div>
+        <div class="day-name">WEDNESDAY</div>
+        <div class="day-name">THURSDAY</div>
+        <div class="day-name">FRIDAY</div>
     </div>
 
-    <table id="schedule-table">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Time</th>
-                <th>Judge</th>
-                <th>Assigned Agent</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            </tbody>
-    </table>
+    <div id="calendar-grid" class="calendar-grid">
+        </div>
 
-    <script>
-        async function loadSchedule() {
-            const tableBody = document.querySelector('#schedule-table tbody');
-            tableBody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+    <div class="footer-rules">
+        <strong>Saginaw Co. Probation Court Rules:</strong>
+        <ul>
+            <li>If a court matter occurs on a Friday, the last agent assigned to the case will cover the matter.</li>
+            <li>If an agent has a Probation Violation Hearing scheduled, they are expected to cover the Court for that day.</li>
+            <li>If an Agent is unable to cover a Court (annual leave, sick leave), they are responsible to find a replacement.</li>
+            <li>If no replacement is found, a supervisor will select an agent.</li>
+        </ul>
+    </div>
 
-            try {
-                // 1. Fetch data from your API
-                const response = await fetch('/api/schedule/?year=2026&month=2');
-                const data = await response.json();
+    <div class="contact-days">
+        <strong>In Person Contact Day Agents</strong>
+        <div class="contact-grid">
+            <div><strong>Monday:</strong></div><div>Olivarez</div>
+            <div><strong>Tuesday:</strong></div><div>Cooklin, Douglas, Dubuque, McAfee, Rodgers, Rodriguez</div>
+            <div><strong>Wednesday:</strong></div><div>Andrus, Cooklin, Franklin, Pigott, Toner</div>
+            <div><strong>Thursday:</strong></div><div>Bovee, Corley, Green, Morrison, Sexton</div>
+            <div><strong>Friday:</strong></div><div>(As Assigned)</div>
+        </div>
+    </div>
+</div>
 
-                // 2. Clear table
-                tableBody.innerHTML = '';
+<script>
+    const YEAR = 2026;
+    const MONTH = 2; // February
 
-                // 3. Loop through data and create rows
-                data.forEach(item => {
-                    const row = `
-                        <tr>
-                            <td>${item.date}</td>
-                            <td>${item.start_time}</td>
-                            <td><strong>${item.judge.last_name}</strong> (${item.judge.room_number})</td>
-                            <td>${item.agent.first_name} ${item.agent.last_name}</td>
-                            <td>
-                                <span class="badge ${item.is_locked ? 'badge-locked' : 'badge-auto'}">
-                                    ${item.is_locked ? 'LOCKED' : 'AUTO'}
-                                </span>
-                            </td>
-                        </tr>
-                    `;
-                    tableBody.innerHTML += row;
-                });
-            } catch (error) {
-                console.error('Error:', error);
-                tableBody.innerHTML = '<tr><td colspan="5" style="color:red">Error loading data. Is the server running?</td></tr>';
+    async function loadSchedule() {
+        // Update Title
+        document.getElementById('month-title').innerText = `AGENT COURT SCHEDULE - ${MONTH}/${YEAR}`;
+
+        const grid = document.getElementById('calendar-grid');
+        grid.innerHTML = '<div style="grid-column: span 5; padding: 20px;">Loading...</div>';
+
+        try {
+            // 1. Fetch Data
+            const response = await fetch(`/api/schedule/?year=${YEAR}&month=${MONTH}`);
+            const assignments = await response.json();
+
+            // 2. Prepare Calendar Logic
+            grid.innerHTML = '';
+
+            // Calculate how many empty cells we need before the 1st of the month
+            // Note: JS months are 0-indexed (0=Jan, 1=Feb).
+            // We want the 1st day of Feb 2026.
+            const firstDayObj = new Date(YEAR, MONTH - 1, 1);
+            let startDay = firstDayObj.getDay(); // 0=Sun, 1=Mon, etc.
+
+            // Adjust for Mon-Fri grid (If Sun(0), shift. If Sat(6), skip?)
+            // This grid assumes Mon=1. If startDay is 0 (Sun) or 6 (Sat), we need logic.
+            // For Feb 2026, the 1st is a Sunday.
+            // Let's align 1st (Sun) to the Previous week or skip it?
+            // Standard work calendars usually start Monday.
+            // Simplified: Let's assume Mon start.
+            // If Feb 1 is Sun, then Mon is Feb 2.
+
+            // Helper: Group assignments by Date "YYYY-MM-DD"
+            const dataByDate = {};
+            assignments.forEach(a => {
+                if (!dataByDate[a.date]) dataByDate[a.date] = [];
+                dataByDate[a.date].push(a);
+            });
+
+            // Calculate total days in month
+            const daysInMonth = new Date(YEAR, MONTH, 0).getDate();
+
+            // 3. Build the Grid
+            // We loop from 1 to daysInMonth.
+            // We simply check the day of week. If it's Sat/Sun, we skip (or show gray).
+
+            // Let's create a loop for the whole month
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateObj = new Date(YEAR, MONTH - 1, d);
+                const dayOfWeek = dateObj.getDay(); // 0=Sun, 6=Sat
+
+                // Skip Weekends for this view (like the doc seems to show)
+                if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+
+                const dateStr = `${YEAR}-${String(MONTH).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+                // Content for this day
+                let contentHtml = '';
+                if (dataByDate[dateStr]) {
+                    dataByDate[dateStr].forEach(item => {
+                        // Format: "Judge: Agent"
+                        contentHtml += `
+                            <div class="assignment">
+                                <strong>${item.judge.last_name}:</strong> ${item.agent.last_name}
+                            </div>
+                        `;
+                    });
+                } else {
+                     contentHtml = '<div style="color:#ccc; font-size:0.8em;">Nothing Scheduled</div>';
+                }
+
+                // Render Cell
+                const cell = document.createElement('div');
+                cell.className = 'calendar-day';
+                cell.innerHTML = `
+                    <span class="date-number">${d}</span>
+                    ${contentHtml}
+                `;
+                grid.appendChild(cell);
             }
+
+        } catch (error) {
+            console.error(error);
+            grid.innerHTML = '<div style="color:red; grid-column: span 5;">Error loading schedule.</div>';
         }
+    }
 
-        async function runGenerator() {
-            if(!confirm("Are you sure? This will overwrite unlocked slots.")) return;
-
-            try {
-                const response = await fetch('/api/generate/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ year: 2026, month: 2 })
-                });
-                const result = await response.json();
-                alert(result.message);
-                loadSchedule(); // Refresh table after generating
-            } catch (error) {
-                alert("Error running generator");
-            }
-        }
-
-        // Load data automatically when page opens
-        loadSchedule();
-    </script>
+    loadSchedule();
+</script>
 
 </body>
 </html>
