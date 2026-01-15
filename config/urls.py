@@ -11,4 +11,5 @@ urlpatterns = [
     # API Endpoints
     path('api/schedule/', views.get_schedule),
     path('api/generate/', views.generate_schedule),
+    path('api/report-days/', views.get_report_days),
 ]

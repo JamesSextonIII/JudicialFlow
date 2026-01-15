@@ -4,6 +4,8 @@ from .models import MonthlyAssignment
 from .serializers import AssignmentSerializer
 from .engine import ScheduleEngine
 from django.shortcuts import render
+from django.http import JsonResponse
+from .models import Agent
 
 
 @api_view(['GET'])
@@ -43,3 +45,23 @@ def generate_schedule(request):
 
 def dashboard_view(request):
     return render(request, 'scheduler/dashboard.html')
+
+def get_report_days(request):
+    """
+    Returns a list of agents grouped by their recurring report day.
+    Used to populate the footer of the dashboard dynamically.
+    """
+    # Map the integer database value (0-4) to the string Day Name
+    day_map = {0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 3: 'Thursday', 4: 'Friday'}
+
+    # Create empty buckets for each day
+    roster = {day: [] for day in day_map.values()}
+
+    # Fetch all agents and sort them into buckets
+    agents = Agent.objects.all().order_by('last_name')
+    for agent in agents:
+        if agent.recurring_report_day is not None and agent.recurring_report_day in day_map:
+            day_name = day_map[agent.recurring_report_day]
+            roster[day_name].append(agent.last_name)
+
+    return JsonResponse(roster)

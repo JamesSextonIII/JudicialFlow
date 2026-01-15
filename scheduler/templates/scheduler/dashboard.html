@@ -13,7 +13,7 @@
 
         .page-container {
             background: white;
-            width: 1000px; /* Fixed width to mimic paper */
+            width: 1000px;
             margin: 0 auto;
             padding: 40px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
@@ -38,7 +38,7 @@
         /* --- Calendar Grid --- */
         .calendar-header {
             display: grid;
-            grid-template-columns: repeat(5, 1fr); /* 5 Columns for Mon-Fri */
+            grid-template-columns: repeat(5, 1fr);
             text-align: center;
             font-weight: bold;
             background-color: #ddd;
@@ -50,7 +50,7 @@
 
         .calendar-grid {
             display: grid;
-            grid-template-columns: repeat(5, 1fr); /* 5 Columns */
+            grid-template-columns: repeat(5, 1fr);
             border: 1px solid black;
             border-top: none;
         }
@@ -58,13 +58,11 @@
         .calendar-day {
             border-right: 1px solid black;
             border-bottom: 1px solid black;
-            min-height: 150px; /* Tall boxes like the doc */
+            min-height: 150px;
             padding: 5px;
-            font-size: 14px;
-            position: relative;
+            font-size: 13px; /* Slightly smaller to fit times */
         }
 
-        /* Remove right border for Friday column */
         .calendar-day:nth-child(5n) { border-right: none; }
 
         .date-number {
@@ -81,8 +79,6 @@
         .assignment strong {
             font-weight: bold;
         }
-
-        .empty-cell { background-color: #f9f9f9; }
 
         /* --- Footer / Rules Section --- */
         .footer-rules {
@@ -102,8 +98,11 @@
         }
         .contact-grid {
             display: grid;
-            grid-template-columns: 1fr 4fr;
-            gap: 10px;
+            grid-template-columns: 100px 1fr; /* Fixed label width */
+            gap: 5px;
+        }
+        .contact-row {
+            display: contents; /* Allows children to participate in grid */
         }
 
         /* Print-friendly styles */
@@ -148,12 +147,8 @@
 
     <div class="contact-days">
         <strong>In Person Contact Day Agents</strong>
-        <div class="contact-grid">
-            <div><strong>Monday:</strong></div><div>Olivarez</div>
-            <div><strong>Tuesday:</strong></div><div>Cooklin, Douglas, Dubuque, McAfee, Rodgers, Rodriguez</div>
-            <div><strong>Wednesday:</strong></div><div>Andrus, Cooklin, Franklin, Pigott, Toner</div>
-            <div><strong>Thursday:</strong></div><div>Bovee, Corley, Green, Morrison, Sexton</div>
-            <div><strong>Friday:</strong></div><div>(As Assigned)</div>
+        <div id="contact-footer" class="contact-grid">
+            <div>Loading Roster...</div>
         </div>
     </div>
 </div>
@@ -163,66 +158,54 @@
     const MONTH = 2; // February
 
     async function loadSchedule() {
-        // Update Title
-        document.getElementById('month-title').innerText = `AGENT COURT SCHEDULE - ${MONTH}/${YEAR}`;
+        // 1. Format Title: "February 2026"
+        const dateObj = new Date(YEAR, MONTH - 1, 1);
+        const monthName = dateObj.toLocaleString('default', { month: 'long', year: 'numeric' });
+        document.getElementById('month-title').innerText = `AGENT COURT SCHEDULE - ${monthName}`;
 
         const grid = document.getElementById('calendar-grid');
-        grid.innerHTML = '<div style="grid-column: span 5; padding: 20px;">Loading...</div>';
+        grid.innerHTML = '<div style="grid-column: span 5; padding: 20px;">Loading Schedule...</div>';
 
         try {
-            // 1. Fetch Data
             const response = await fetch(`/api/schedule/?year=${YEAR}&month=${MONTH}`);
             const assignments = await response.json();
 
-            // 2. Prepare Calendar Logic
             grid.innerHTML = '';
 
-            // Calculate how many empty cells we need before the 1st of the month
-            // Note: JS months are 0-indexed (0=Jan, 1=Feb).
-            // We want the 1st day of Feb 2026.
-            const firstDayObj = new Date(YEAR, MONTH - 1, 1);
-            let startDay = firstDayObj.getDay(); // 0=Sun, 1=Mon, etc.
-
-            // Adjust for Mon-Fri grid (If Sun(0), shift. If Sat(6), skip?)
-            // This grid assumes Mon=1. If startDay is 0 (Sun) or 6 (Sat), we need logic.
-            // For Feb 2026, the 1st is a Sunday.
-            // Let's align 1st (Sun) to the Previous week or skip it?
-            // Standard work calendars usually start Monday.
-            // Simplified: Let's assume Mon start.
-            // If Feb 1 is Sun, then Mon is Feb 2.
-
-            // Helper: Group assignments by Date "YYYY-MM-DD"
+            // Helper: Group by Date
             const dataByDate = {};
             assignments.forEach(a => {
                 if (!dataByDate[a.date]) dataByDate[a.date] = [];
                 dataByDate[a.date].push(a);
             });
 
-            // Calculate total days in month
+            // Loop Days (1 to End of Month)
             const daysInMonth = new Date(YEAR, MONTH, 0).getDate();
 
-            // 3. Build the Grid
-            // We loop from 1 to daysInMonth.
-            // We simply check the day of week. If it's Sat/Sun, we skip (or show gray).
-
-            // Let's create a loop for the whole month
             for (let d = 1; d <= daysInMonth; d++) {
-                const dateObj = new Date(YEAR, MONTH - 1, d);
-                const dayOfWeek = dateObj.getDay(); // 0=Sun, 6=Sat
+                const currentDayObj = new Date(YEAR, MONTH - 1, d);
+                const dayOfWeek = currentDayObj.getDay();
 
-                // Skip Weekends for this view (like the doc seems to show)
+                // Skip Sat(6) and Sun(0)
                 if (dayOfWeek === 0 || dayOfWeek === 6) continue;
 
                 const dateStr = `${YEAR}-${String(MONTH).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
-                // Content for this day
                 let contentHtml = '';
                 if (dataByDate[dateStr]) {
                     dataByDate[dateStr].forEach(item => {
-                        // Format: "Judge: Agent"
+                        // Clean up time: "09:00:00" -> "9:00"
+                        let timeStr = item.start_time;
+                        try {
+                            const [h, m] = item.start_time.split(':');
+                            const hour = parseInt(h, 10); // Removes leading zero
+                            timeStr = `${hour}:${m}`;
+                        } catch(e) {}
+
+                        // New Format: Time Judge: Agent
                         contentHtml += `
                             <div class="assignment">
-                                <strong>${item.judge.last_name}:</strong> ${item.agent.last_name}
+                                <strong>${timeStr} ${item.judge.last_name}:</strong> ${item.agent.last_name}
                             </div>
                         `;
                     });
@@ -230,7 +213,6 @@
                      contentHtml = '<div style="color:#ccc; font-size:0.8em;">Nothing Scheduled</div>';
                 }
 
-                // Render Cell
                 const cell = document.createElement('div');
                 cell.className = 'calendar-day';
                 cell.innerHTML = `
@@ -246,7 +228,38 @@
         }
     }
 
+    async function loadFooter() {
+        const footer = document.getElementById('contact-footer');
+        try {
+            const response = await fetch('/api/report-days/');
+            const roster = await response.json();
+
+            footer.innerHTML = ''; // Clear loading text
+
+            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+            days.forEach(day => {
+                const agents = roster[day] && roster[day].length > 0
+                    ? roster[day].join(', ')
+                    : '(None Assigned)';
+
+                footer.innerHTML += `
+                    <div class="contact-row">
+                        <div style="font-weight:bold;">${day}:</div>
+                        <div>${agents}</div>
+                    </div>
+                `;
+            });
+
+        } catch (error) {
+            console.error(error);
+            footer.innerHTML = '<div>Error loading agent roster.</div>';
+        }
+    }
+
+    // Run on Page Load
     loadSchedule();
+    loadFooter();
 </script>
 
 </body>
